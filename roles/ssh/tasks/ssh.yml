@@ -1,0 +1,60 @@
+---
+# ====================================================
+# Setup SSH Keys for Development Environment
+# ====================================================
+- name: Install SSH server
+  become: true
+  ansible.builtin.package:
+    name: openssh-server
+    state: present
+
+- name: Start and enable SSH service
+  become: true
+  ansible.builtin.service:
+    name: sshd
+    state: started
+    enabled: true
+
+- name: "Get User's Home Directory"
+  ansible.builtin.getent:
+    database: passwd
+    key: "{{ developer_user_id }}"
+  register: user_info
+
+- name: "Set User Home Directory Fact"
+  ansible.builtin.set_fact:
+    user_home_directory: "{{ user_info.ansible_facts.getent_passwd[developer_user_id][4] }}"
+
+- name: Create .ssh directory
+  ansible.builtin.file:
+    path: "{{ user_home_directory }}/.ssh"
+    state: directory
+    mode: '0700'
+    owner: "{{ developer_user_id }}"
+
+- name: Create Authorized Keys file
+  ansible.builtin.file:
+    path: "{{ user_home_directory }}/.ssh/authorized_keys"
+    state: touch
+    mode: '0600'
+    owner: "{{ developer_user_id }}"
+
+- name: Configure Authorized Keys file
+  when: ssh_public_key_url is defined
+  block:
+
+    - name: Get Public Keys from URL
+      ansible.builtin.uri:
+        url: "{{ ssh_public_key_url }}"
+        return_content: yes
+      register: ssh_key_content
+
+    - name: Show Public Key Content (for debugging)
+      ansible.builtin.debug:
+        msg: "{{ ssh_key_content.content }}"
+
+    - name: Add Public Key to Authorized Keys
+      ansible.builtin.copy:
+        content: "{{ ssh_key_content.content }}"
+        dest: "{{ user_home_directory }}/.ssh/authorized_keys
+...

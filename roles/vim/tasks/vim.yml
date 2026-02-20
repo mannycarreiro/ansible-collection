@@ -1,0 +1,15 @@
+---
+- name: Ensure needed system directories are present
+  become: true
+  loop: "{{ system_dir_list }}"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+
+- name: Ensure plugin repos are cloned
+  become: true
+  loop: "{{ vim_plugins_list }}"
+  ansible.builtin.git:
+    repo: "{{ item }}"
+    dest: /usr/share/vim/vimfiles/pack/vendor/start/{{ item.split('/')[-1] | regex_replace('\.git$') }}
+...
