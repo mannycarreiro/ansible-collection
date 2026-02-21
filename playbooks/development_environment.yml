@@ -1,0 +1,12 @@
+---
+- name: Setup Development Environment
+  hosts: "{{ TARGET_HOSTS }}"
+  gather_facts: false
+
+  roles:
+    - role: ../roles/ssh
+      vars:
+        ssh_user: "{{ SSH_USER }}"
+        ssh_public_key: "{{ SSH_PUBLIC_KEY }}"
+
+...

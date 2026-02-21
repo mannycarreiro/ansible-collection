@@ -2,13 +2,13 @@
 # ====================================================
 # Setup SSH Keys for Development Environment
 # ====================================================
-- name: Install SSH server
+- name: Ensure SSH Server is Installed
   become: true
   ansible.builtin.package:
     name: openssh-server
     state: present
 
-- name: Start and enable SSH service
+- name: Ensure SSH Service is started and enabled
   become: true
   ansible.builtin.service:
     name: sshd
@@ -18,43 +18,69 @@
 - name: "Get User's Home Directory"
   ansible.builtin.getent:
     database: passwd
-    key: "{{ developer_user_id }}"
+    key: "{{ ssh_user }}"
   register: user_info
+
 
 - name: "Set User Home Directory Fact"
   ansible.builtin.set_fact:
-    user_home_directory: "{{ user_info.ansible_facts.getent_passwd[developer_user_id][4] }}"
+    user_home_directory: "{{ user_info.ansible_facts.getent_passwd[ssh_user][4] }}"
 
-- name: Create .ssh directory
+
+- name: Ensure .ssh directory is created
+  become: true
   ansible.builtin.file:
     path: "{{ user_home_directory }}/.ssh"
     state: directory
     mode: '0700'
-    owner: "{{ developer_user_id }}"
+    owner: "{{ ssh_user }}"
 
-- name: Create Authorized Keys file
+
+- name: Ensure ssh config.d directory is created
+  become: true
   ansible.builtin.file:
-    path: "{{ user_home_directory }}/.ssh/authorized_keys"
-    state: touch
-    mode: '0600'
-    owner: "{{ developer_user_id }}"
+    path: "{{ user_home_directory }}/.ssh/config.d"
+    state: directory
+    mode: '0755'
+    owner: "{{ ssh_user }}"
+
+
+- name: Set SSH Main Configuration
+  become: true
+  ansible.builtin.template:
+    src: ssh_config.j2
+    dest: "{{ user_home_directory }}/.ssh/config"
+    owner: "{{ ssh_user }}"
+    mode: '0755'
+
 
 - name: Configure Authorized Keys file
-  when: ssh_public_key_url is defined
+  when: 
+    - ssh_public_key is defined
+    - ssh_public_key.lower() != "changeme"
+  
   block:
-
     - name: Get Public Keys from URL
       ansible.builtin.uri:
-        url: "{{ ssh_public_key_url }}"
+        url: "{{ ssh_public_key }}"
         return_content: yes
-      register: ssh_key_content
+      register: ssh_public_key_content
+      when:
+        - ssh_public_key.startswith("http") # COVERS http AND https
+    
+    - name: Set SSH Public Key Ansible Fact
+      ansible.builtin.set_fact:
+        ssh_public_key_value: "{{ ssh_public_key_content.content if ssh_public_key_content is defined else ssh_public_key }}"
 
     - name: Show Public Key Content (for debugging)
       ansible.builtin.debug:
-        msg: "{{ ssh_key_content.content }}"
+        msg: "{{ ssh_public_key_value }}"
 
-    - name: Add Public Key to Authorized Keys
+    - name: Ensure Public Key is added to the authorized_keys file
+      become: true
       ansible.builtin.copy:
-        content: "{{ ssh_key_content.content }}"
-        dest: "{{ user_home_directory }}/.ssh/authorized_keys
+        content: "{{ ssh_public_key_value }}"
+        dest: "{{ user_home_directory }}/.ssh/authorized_keys"
+        owner: "{{ ssh_user }}"
+        mode: '0600'
 ...

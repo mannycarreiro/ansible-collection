@@ -1,0 +1,21 @@
+# File: ~/.ssh/config
+
+# ================================================
+#     This file is managed by Ansible            |
+# Any manual changes will be overwritten.        |
+#       YOU HAVE BEEN WARNED!!                   |
+# ================================================
+
+
+# *************************************************
+# INCLUDE ANY FILES INSIDE CONFIG.D FOLDER
+# *************************************************
+include ~/.ssh/config.d/*
+
+
+# *************************************************
+# DEFAULT CONFIGURATION FOR SSH
+# *************************************************
+Host *
+  ControlPersist 10m
+  User {{ ssh_user }}
