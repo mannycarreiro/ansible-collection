@@ -23,6 +23,7 @@ The frontend and backend are intentionally kept separate. `ssh-session-manager.p
 ```
 ## <Description>
 #ENV: <Environment>
+#URL: <Button Label>::<URL>
 Host <Aliases_for_host>
   HostName <IP or Hostname>
   User <UserID>
@@ -30,12 +31,15 @@ Host <Aliases_for_host>
   identityFile <path to private key>
 ```
 
-**Example** 👇🏻
+You can add multiple `#URL:` lines before a `Host` block — each becomes a clickable button on that host's row in the UI.
 
+**Example** 👇🏻
 
 ```
 ## Ansible Controller
 #ENV: PROD
+#URL: Grafana::https://grafana.domain.com
+#URL: Kibana::https://kibana.domain.com:5601
 Host ansible
   HostName ansible-master.domain.com
   User manny

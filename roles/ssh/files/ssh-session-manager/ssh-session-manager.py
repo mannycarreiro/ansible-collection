@@ -28,7 +28,7 @@ def parse_ssh_config(text: str) -> list[dict]:
     current = None
     pending_description = ""
     pending_env = ""
-    pending_url = ""
+    pending_urls: list[dict] = []
     for raw_line in text.splitlines():
         line = raw_line.strip()
         if not line:
@@ -45,10 +45,16 @@ def parse_ssh_config(text: str) -> list[dict]:
             continue
         if line.upper().startswith("#URL:"):
             url_val = line[5:].strip()
-            if current is not None:
-                current["url"] = url_val
+            # Format: NAME::URL
+            if "::" in url_val:
+                url_name, url_href = url_val.split("::", 1)
+                url_entry = {"name": url_name.strip(), "url": url_href.strip()}
             else:
-                pending_url = url_val
+                url_entry = {"name": "Link", "url": url_val}
+            if current is not None:
+                current["urls"].append(url_entry)
+            else:
+                pending_urls.append(url_entry)
             continue
         if line.startswith("#"):
             continue
@@ -59,11 +65,11 @@ def parse_ssh_config(text: str) -> list[dict]:
         if key == "host":
             names = [n for n in value.split() if "*" not in n and "?" not in n]
             for name in names:
-                current = {"name": name, "hostname": "", "user": "", "port": "22", "identityFile": "", "description": pending_description, "env": pending_env, "url": pending_url}
+                current = {"name": name, "hostname": "", "user": "", "port": "22", "identityFile": "", "description": pending_description, "env": pending_env, "urls": list(pending_urls)}
                 hosts.append(current)
             pending_description = ""
             pending_env = ""
-            pending_url = ""
+            pending_urls = []
             if not names:
                 current = None
         elif current:
